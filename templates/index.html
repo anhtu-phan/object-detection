@@ -24,6 +24,12 @@
 						<img src="{{ url_for('display_image', filename=input_file) }}">
 						<figcaption style="text-align: center">Input Image</figcaption>
 					</figure>
+					{% if detr_file_name_result %}
+						<figure style="display: inline-table">
+							<img src="{{ url_for('display_image', filename=detr_file_name_result) }}">
+							<figcaption style="text-align: center">DETR Result</figcaption>
+						</figure>
+					{% endif %}
 				</div>
 				{% endif %}
 			</div>
