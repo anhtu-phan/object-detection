@@ -1,0 +1,44 @@
+<!doctype! html>
+<html>
+	<head>
+		<title>Transformer object detection Demos</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<link rel="stylesheet" href="/static/css/app.css" type="text/css">
+		<script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+	</head>
+	<body>
+		<div id="app">
+			<div>
+				<form id="upload-form" method="post" enctype="multipart/form-data">
+					<div class="form-content-container">
+						<input id="upload_image" type="file" name="image">
+						<input id="upload_button" type="submit" value="Submit" onclick="loading();"/>
+					</div>
+				</form>
+			</div>
+			<hr>
+			<div>
+				{% if input_file %}
+				<div style="display: inline-flex">
+					<figure style="display: inline-table">
+						<img src="{{ url_for('display_image', filename=input_file) }}">
+						<figcaption style="text-align: center">Input Image</figcaption>
+					</figure>
+				</div>
+				{% endif %}
+			</div>
+			<div id="loading"></div>
+		</div>
+		<script type="text/javascript">// <![CDATA[
+			function loading(){
+				$("#loading").show();
+				$("#result").find("tbody").hide();
+			}
+			$("#upload-form").submit(function (e) {
+				$("#upload_button").attr("disabled", true);
+				return true;
+			});
+		// ]]>
+		</script>
+	</body>
+</html>
