@@ -65,15 +65,16 @@ def plot_results(pil_img, prob, boxes, img_name):
     #     text = f'{CLASSES[cl]}: {p[cl]:0.2f}'
     #     pil_img_draw.text((xmin, ymin), text)
     # pil_img.save(f"static/input_images/{img_name}")
-    plt.figure(figsize=pil_img.size)
+    img_w, img_h = pil_img.size
+    plt.figure(figsize=((img_w+80)/100, (img_h+80)/100))
     plt.imshow(pil_img)
     ax = plt.gca()
     for p, (xmin, ymin, xmax, ymax), c in zip(prob, boxes.tolist(), COLORS * 100):
         ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                                   fill=False, color=c, linewidth=3))
+                                   fill=False, color=c, linewidth=2))
         cl = p.argmax()
         text = f'{CLASSES[cl]}: {p[cl]:0.2f}'
-        ax.text(xmin, ymin, text, fontsize=15,
+        ax.text(xmin, ymin, text, fontsize=6,
                 bbox=dict(facecolor='yellow', alpha=0.5))
     plt.axis('off')
     plt.savefig(f"static/input_images/{img_name}", bbox_inches='tight')
