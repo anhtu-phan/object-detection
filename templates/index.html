@@ -30,6 +30,12 @@
 							<figcaption style="text-align: center">DETR Result</figcaption>
 						</figure>
 					{% endif %}
+					{% if deformable_file_name_result %}
+						<figure style="display: inline-table">
+							<img src="{{ url_for('display_image', filename=deformable_file_name_result) }}">
+							<figcaption style="text-align: center">Deformable Result</figcaption>
+						</figure>
+					{% endif %}
 				</div>
 				{% endif %}
 			</div>

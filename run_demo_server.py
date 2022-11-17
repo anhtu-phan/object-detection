@@ -4,9 +4,11 @@ import argparse
 import torch
 import matplotlib.pyplot as plt
 import torchvision.transforms as T
-from PIL import Image, ImageDraw
+from PIL import Image
+import numpy as np
 
 from detr.models import build_model as build_model_detr
+build_model_deformable = __import__("Deformable-DETR.models")
 
 app = Flask(__name__)
 
@@ -58,13 +60,6 @@ def detect(im, model, transform):
 
 
 def plot_results(pil_img, prob, boxes, img_name):
-    # pil_img_draw = ImageDraw.Draw(pil_img)
-    # for p, (xmin, ymin, xmax, ymax) in zip(prob, boxes.tolist()):
-    #     pil_img_draw.rectangle([(xmin, ymin), (xmax - xmin, ymax - ymin)], outline="red")
-    #     cl = p.argmax()
-    #     text = f'{CLASSES[cl]}: {p[cl]:0.2f}'
-    #     pil_img_draw.text((xmin, ymin), text)
-    # pil_img.save(f"static/input_images/{img_name}")
     img_w, img_h = pil_img.size
     plt.figure(figsize=((img_w+80)/100, (img_h+80)/100))
     plt.imshow(pil_img)
@@ -85,6 +80,14 @@ def index():
     return render_template('index.html')
 
 
+def get_result(model, model_path, im, result_file_name):
+    checkpoint_detr = torch.load(model_path, map_location='cpu')
+    model.load_state_dict(checkpoint_detr['model'])
+    model.eval()
+    scores, boxes = detect(im, model, transform)
+    plot_results(im, scores, boxes, result_file_name)
+
+
 @app.route('/', methods=['POST'])
 def index_post():
     file = request.files['image']
@@ -92,16 +95,21 @@ def index_post():
     file.save(file_save_path)
     im = Image.open(file_save_path)
 
+    filename = file.filename.split(".")[0].strip()
+    detr_file_name_result = None
+    deformable_file_name_result = None
     if args.detr_model_path is not None:
         model_detr, _, _ = build_model_detr(args)
-        checkpoint_detr = torch.load(args.detr_model_path, map_location='cpu')
-        model_detr.load_state_dict(checkpoint_detr['model'])
-        model_detr.eval()
-        scores, boxes = detect(im, model_detr, transform)
-        detr_file_name_result = file.filename.split(".")[0].strip()+"_detr_result.png"
-        plot_results(im, scores, boxes, detr_file_name_result)
+        detr_file_name_result = filename + "_detr_result.png"
+        get_result(model_detr, args.detr_model_path, im, detr_file_name_result)
+    if args.deformable_model_path is not None:
+        model_deformable, _, _ = build_model_deformable(args)
+        deformable_file_name_result = filename + "_deformable_result.png"
+        get_result(model_deformable, args.deformable_model_path, im, deformable_file_name_result)
 
-    return render_template('index.html', input_file=file.filename, detr_file_name_result=detr_file_name_result)
+    return render_template('index.html', input_file=filename,
+                           detr_file_name_result=detr_file_name_result,
+                           deformable_file_name_result=deformable_file_name_result,)
 
 
 @app.route('/display/<filename>')
@@ -111,18 +119,26 @@ def display_image(filename):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Transformer object detection demo', add_help=False)
-    parser.add_argument('--lr', default=1e-4, type=float)
-    parser.add_argument('--lr_backbone', default=1e-5, type=float)
+
+    parser.add_argument('--lr', default=2e-4, type=float)
+    parser.add_argument('--lr_backbone_names', default=["backbone.0"], type=str, nargs='+')
+    parser.add_argument('--lr_backbone', default=2e-5, type=float)
+    parser.add_argument('--lr_linear_proj_names', default=['reference_points', 'sampling_offsets'], type=str, nargs='+')
+    parser.add_argument('--lr_linear_proj_mult', default=0.1, type=float)
     parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--weight_decay', default=1e-4, type=float)
     parser.add_argument('--epochs', default=300, type=int)
-    parser.add_argument('--lr_drop', default=200, type=int)
+    parser.add_argument('--lr_drop', default=40, type=int)
+    parser.add_argument('--lr_drop_epochs', default=None, type=int, nargs='+')
     parser.add_argument('--clip_max_norm', default=0.1, type=float,
                         help='gradient clipping max norm')
 
-    # Model parameters
-    parser.add_argument('--frozen_weights', type=str, default=None,
-                        help="Path to the pretrained model. If set, only the mask head will be trained")
+    parser.add_argument('--sgd', action='store_true')
+
+    # Variants of Deformable DETR
+    parser.add_argument('--with_box_refine', default=False, action='store_true')
+    parser.add_argument('--two_stage', default=False, action='store_true')
+
     # * Backbone
     parser.add_argument('--backbone', default='resnet50', type=str,
                         help="Name of the convolutional backbone to use")
@@ -130,6 +146,9 @@ if __name__ == '__main__':
                         help="If true, we replace stride with dilation in the last convolutional block (DC5)")
     parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
                         help="Type of positional embedding to use on top of the image features")
+    parser.add_argument('--position_embedding_scale', default=2 * np.pi, type=float,
+                        help="position / size * scale")
+    parser.add_argument('--num_feature_levels', default=4, type=int, help='number of feature levels')
 
     # * Transformer
     parser.add_argument('--enc_layers', default=6, type=int,
@@ -147,6 +166,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_queries', default=100, type=int,
                         help="Number of query slots")
     parser.add_argument('--pre_norm', action='store_true')
+    parser.add_argument('--dec_n_points', default=4, type=int)
+    parser.add_argument('--enc_n_points', default=4, type=int)
 
     # * Segmentation
     parser.add_argument('--masks', action='store_true',
@@ -169,6 +190,8 @@ if __name__ == '__main__':
     parser.add_argument('--giou_loss_coef', default=2, type=float)
     parser.add_argument('--eos_coef', default=0.1, type=float,
                         help="Relative classification weight of the no-object class")
+    parser.add_argument('--cls_loss_coef', default=2, type=float)
+    parser.add_argument('--focal_alpha', default=0.25, type=float)
 
     # dataset parameters
     parser.add_argument('--dataset_file', default='coco')
@@ -186,19 +209,12 @@ if __name__ == '__main__':
                         help='start epoch')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--demo', action='store_true')
-    parser.add_argument('--image_input',
-                        help='path to load image for demo')
-    parser.add_argument('--wandb_name',
-                        help='path to load image for demo')
     parser.add_argument('--num_workers', default=2, type=int)
 
-    # distributed training parameters
-    parser.add_argument('--world_size', default=1, type=int,
-                        help='number of distributed processes')
-    parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-
+    # Running demo server
     parser.add_argument("--port", default=9595)
     parser.add_argument("--detr_model_path", default=None)
+    parser.add_argument("--deformable_model_path", default=None)
 
     args = parser.parse_args()
     run_port = args.port
