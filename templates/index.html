@@ -17,7 +17,7 @@
 				</form>
 			</div>
 			<hr>
-			<div>
+			<div id="result">
 				{% if input_file %}
 				<div style="display: inline-flex">
 					<figure style="display: inline-table">
@@ -36,6 +36,12 @@
 							<figcaption style="text-align: center">Deformable Result</figcaption>
 						</figure>
 					{% endif %}
+					{% if yolov5_file_name_result %}
+						<figure style="display: inline-table">
+							<img src="{{ url_for('display_image_yolov5', filename=yolov5_file_name_result) }}">
+							<figcaption style="text-align: center">Yolov5 Result</figcaption>
+						</figure>
+					{% endif %}
 				</div>
 				{% endif %}
 			</div>
@@ -44,7 +50,7 @@
 		<script type="text/javascript">// <![CDATA[
 			function loading(){
 				$("#loading").show();
-				$("#result").find("tbody").hide();
+				$("#result").hide();
 			}
 			$("#upload-form").submit(function (e) {
 				$("#upload_button").attr("disabled", true);

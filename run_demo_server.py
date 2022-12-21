@@ -6,13 +6,17 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as T
 from PIL import Image
 import numpy as np
+import sys
 
+# build_model_deformable = __import__("Deformable-DETR.models")
+sys.path.insert(0, "./yolov5")
+sys.path.insert(1, "./detr")
+from yolov5.detect import run as run_yolov5
 from detr.models import build_model as build_model_detr
-build_model_deformable = __import__("Deformable-DETR.models")
 
 app = Flask(__name__)
 
-CLASSES = ['almond', 'apple', "mango", "N/A", "N/A", "N/A"]
+CLASSES = ['chick', 'chick', "N/A", "N/A", "N/A", "N/A"]
 COLORS = [(0.000, 0.447, 0.741), (0.850, 0.325, 0.098), (0.929, 0.694, 0.125),
           (0.494, 0.184, 0.556), (0.466, 0.674, 0.188), (0.301, 0.745, 0.933)]
 transform = T.Compose([
@@ -98,23 +102,36 @@ def index_post():
     filename = file.filename.split(".")[0].strip()
     detr_file_name_result = None
     deformable_file_name_result = None
+    yolov5_file_name_result = None
     if args.detr_model_path is not None:
         model_detr, _, _ = build_model_detr(args)
         detr_file_name_result = filename + "_detr_result.png"
         get_result(model_detr, args.detr_model_path, im, detr_file_name_result)
-    if args.deformable_model_path is not None:
-        model_deformable, _, _ = build_model_deformable(args)
-        deformable_file_name_result = filename + "_deformable_result.png"
-        get_result(model_deformable, args.deformable_model_path, im, deformable_file_name_result)
-
-    return render_template('index.html', input_file=filename,
+    # if args.deformable_model_path is not None:
+    #     model_deformable, _, _ = build_model_deformable(args)
+    #     deformable_file_name_result = filename + "_deformable_result.png"
+    #     get_result(model_deformable, args.deformable_model_path, im, deformable_file_name_result)
+    if args.yolov5_path is not None:
+        yolov5_file_name_result = run_yolov5(weights=args.yolov5_path, source=file_save_path, data=args.yolov5_data_cfg_path, project='static/input_images', exist_ok=True)
+        # yolov5_file_name_result = "/".join(yolov5_file_name_result.split("/")[1:])
+    print("yolo5 resutl ====>>>  ", yolov5_file_name_result)
+    print("detr_file_name_result ====>>>  ", detr_file_name_result)
+    return render_template('index.html', input_file=file.filename,
                            detr_file_name_result=detr_file_name_result,
-                           deformable_file_name_result=deformable_file_name_result,)
+                           # deformable_file_name_result="input_images/"+deformable_file_name_result,
+                           yolov5_file_name_result=file.filename)
 
 
 @app.route('/display/<filename>')
 def display_image(filename):
+    print("diplay_image -->>> ", filename)
     return redirect(url_for('static', filename="input_images/"+filename), code=301)
+
+
+@app.route('/display_yolov5/<filename>')
+def display_image_yolov5(filename):
+    print("diplay_image -->>> ", filename)
+    return redirect(url_for('static', filename="input_images/exp/"+filename), code=301)
 
 
 if __name__ == '__main__':
@@ -215,6 +232,9 @@ if __name__ == '__main__':
     parser.add_argument("--port", default=9595)
     parser.add_argument("--detr_model_path", default=None)
     parser.add_argument("--deformable_model_path", default=None)
+    parser.add_argument("--yolov5_path", default=None)
+    parser.add_argument("--yolov5_data_cfg_path", default=None)
+
 
     args = parser.parse_args()
     run_port = args.port
