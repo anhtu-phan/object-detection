@@ -1,5 +1,6 @@
 import os
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, redirect, url_for, send_from_directory
+from werkzeug.utils import secure_filename
 import argparse
 import torch
 import matplotlib.pyplot as plt
@@ -10,9 +11,9 @@ import sys
 
 # build_model_deformable = __import__("Deformable-DETR.models")
 sys.path.insert(0, "./yolov5")
-sys.path.insert(1, "./detr")
+# sys.path.insert(1, "./detr")
 from yolov5.detect import run as run_yolov5
-from detr.models import build_model as build_model_detr
+# from detr.models import build_model as build_model_detr
 
 app = Flask(__name__)
 
@@ -94,44 +95,42 @@ def get_result(model, model_path, im, result_file_name):
 
 @app.route('/', methods=['POST'])
 def index_post():
-    file = request.files['image']
-    file_save_path = os.path.join('static/input_images', file.filename)
+    file = request.files['file']
+    filename = secure_filename(file.filename)
+    print("upload filename -->>>>", filename)
+    file_save_path = os.path.join('static/input_images', filename)
     file.save(file_save_path)
-    im = Image.open(file_save_path)
+    # im = Image.open(file_save_path)
 
-    filename = file.filename.split(".")[0].strip()
+    # filename = file.filename.split(".")[0].strip()
     detr_file_name_result = None
     deformable_file_name_result = None
     yolov5_file_name_result = None
-    if args.detr_model_path is not None:
-        model_detr, _, _ = build_model_detr(args)
-        detr_file_name_result = filename + "_detr_result.png"
-        get_result(model_detr, args.detr_model_path, im, detr_file_name_result)
+    # if args.detr_model_path is not None:
+    #     model_detr, _, _ = build_model_detr(args)
+    #     detr_file_name_result = filename + "_detr_result.png"
+    #     get_result(model_detr, args.detr_model_path, im, detr_file_name_result)
     # if args.deformable_model_path is not None:
     #     model_deformable, _, _ = build_model_deformable(args)
     #     deformable_file_name_result = filename + "_deformable_result.png"
     #     get_result(model_deformable, args.deformable_model_path, im, deformable_file_name_result)
     if args.yolov5_path is not None:
-        yolov5_file_name_result = run_yolov5(weights=args.yolov5_path, source=file_save_path, data=args.yolov5_data_cfg_path, project='static/input_images', exist_ok=True)
+        # pass
+        yolov5_file_name_result = run_yolov5(weights=args.yolov5_path, source=file_save_path, data=args.yolov5_data_cfg_path, project='static/', exist_ok=True)
         # yolov5_file_name_result = "/".join(yolov5_file_name_result.split("/")[1:])
-    print("yolo5 resutl ====>>>  ", yolov5_file_name_result)
+    print("yolo5 resutl ====>>>  ", filename)
     print("detr_file_name_result ====>>>  ", detr_file_name_result)
-    return render_template('index.html', input_file=file.filename,
-                           detr_file_name_result=detr_file_name_result,
+    return render_template('index.html', input_file=filename,
+                           # detr_file_name_result=detr_file_name_result,
                            # deformable_file_name_result="input_images/"+deformable_file_name_result,
-                           yolov5_file_name_result=file.filename)
-
-
-@app.route('/display/<filename>')
-def display_image(filename):
-    print("diplay_image -->>> ", filename)
-    return redirect(url_for('static', filename="input_images/"+filename), code=301)
+                           yolov5_file_name_result=filename)
 
 
 @app.route('/display_yolov5/<filename>')
 def display_image_yolov5(filename):
-    print("diplay_image -->>> ", filename)
-    return redirect(url_for('static', filename="input_images/exp/"+filename), code=301)
+    print("diplay_image_yolov5 -->>> ", filename)
+    # return redirect(url_for('static', filename='exp/' + filename), code=301)
+    return send_from_directory("static/exp", filename, as_attachment=False)
 
 
 if __name__ == '__main__':

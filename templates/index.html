@@ -9,34 +9,24 @@
 	<body>
 		<div id="app">
 			<div>
-				<form id="upload-form" method="post" enctype="multipart/form-data">
+				<form id="upload-form" method="post" action="/" enctype="multipart/form-data">
 					<div class="form-content-container">
-						<input id="upload_image" type="file" name="image">
-						<input id="upload_button" type="submit" value="Submit" onclick="loading();"/>
+						<input id="upload_image" type="file" name="file" autocomplete="off" required>
+						<input id="upload_button" type="submit" value="Upload" onclick="loading();"/>
 					</div>
 				</form>
 			</div>
 			<hr>
 			<div id="result">
-				{% if input_file %}
+				{% if yolov5_file_name_result %}
 				<div style="display: inline-flex">
-					<figure style="display: inline-table">
-						<img src="{{ url_for('display_image', filename=input_file) }}">
-						<figcaption style="text-align: center">Input Image</figcaption>
-					</figure>
-					{% if detr_file_name_result %}
-						<figure style="display: inline-table">
-							<img src="{{ url_for('display_image', filename=detr_file_name_result) }}">
-							<figcaption style="text-align: center">DETR Result</figcaption>
-						</figure>
-					{% endif %}
-					{% if deformable_file_name_result %}
-						<figure style="display: inline-table">
-							<img src="{{ url_for('display_image', filename=deformable_file_name_result) }}">
-							<figcaption style="text-align: center">Deformable Result</figcaption>
-						</figure>
-					{% endif %}
-					{% if yolov5_file_name_result %}
+					{% if yolov5_file_name_result and yolov5_file_name_result.endswith(".mp4") %}
+						{% print("video ->>>>", yolov5_file_name_result) %}
+						<video autoplay="autoplay" controls="controls" preload="preload" webkit-playsinline>
+							<source src="{{ url_for('display_image_yolov5', filename=yolov5_file_name_result) }}" type="video/mp4"></source>
+						</video>
+					{% else %}
+						{% print("image ->>>>", yolov5_file_name_result) %}
 						<figure style="display: inline-table">
 							<img src="{{ url_for('display_image_yolov5', filename=yolov5_file_name_result) }}">
 							<figcaption style="text-align: center">Yolov5 Result</figcaption>
